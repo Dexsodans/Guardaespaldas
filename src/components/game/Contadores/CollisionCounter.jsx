@@ -9,9 +9,13 @@ function CollisionCounter({ collisions }) {
         fontSize: "24px",
         fontWeight: "bold",
         zIndex: 1000,
+        background: "rgba(0, 0, 0, 0.6)",
+        padding: "10px 16px",
+        borderRadius: "10px",
+        border: "2px solid #ff4d4d",
       }}
     >
-      Choques: {collisions}
+      💥 Choques: {collisions}
     </div>
   );
 }
