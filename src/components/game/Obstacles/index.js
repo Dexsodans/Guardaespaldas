@@ -1,0 +1,1 @@
+export { ObstacleManager as Obstacles } from './ObstacleManager';
