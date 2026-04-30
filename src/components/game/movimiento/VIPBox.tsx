@@ -145,10 +145,14 @@ export default function VIPBox() {
                 onTouchEnd={stopMusic}
                 style={{
                     position: "absolute",
+                    left: "50%",
+                    top: "50%",
+                    transform: "translate(-50%, -50%)",
                     width: 80,
                     height: 80,
                     touchAction: "none",
                     filter: "drop-shadow(0 0 12px #4fc3f7aa)",
+                    zIndex: 100,
                 }}
             >
                 <canvas ref={canvasRef} width={80} height={80} style={{ display: "block" }} />
@@ -161,6 +165,7 @@ export default function VIPBox() {
                     const el = target as HTMLElement;
                     el.style.left = `${left}px`;
                     el.style.top = `${top}px`;
+                    el.style.transform = "none";
                 }}
             />
         </>
