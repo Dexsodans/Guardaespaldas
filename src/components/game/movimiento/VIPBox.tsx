@@ -4,21 +4,13 @@ import Moveable from "react-moveable";
 import type { OnDrag } from "react-moveable";
 import * as THREE from "three";
 
-interface VIPBoxProps {
-    obstacleIds: string[];
-    onCollision?: () => void;
-}
-
-export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
+export default function VIPBox() {
     const vipRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const lastHit = useRef<number>(0);
-    const audioCtx = useRef<AudioContext | null>(null);
-    const oscillators = useRef<OscillatorNode[]>([]);
     const isDragging = useRef<boolean>(false);
-    const COOLDOWN = 500;
+    const audioCtx = useRef<AudioContext | null>(null);
 
-    // ---- THREE.JS: dibuja el cuadrado GD en el canvas ----
+    // ---- THREE.JS ----
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -31,32 +23,27 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
         const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
         camera.position.z = 5;
 
-        // Cuerpo del cuadrado
         const bodyGeo = new THREE.BoxGeometry(1.5, 1.5, 0.2);
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, roughness: 0.3, metalness: 0.6 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         scene.add(body);
 
-        // Borde oscuro (outline)
         const edgeGeo = new THREE.BoxGeometry(1.58, 1.58, 0.15);
         const edgeMat = new THREE.MeshStandardMaterial({ color: 0x0a0a2a, roughness: 1 });
         const edge = new THREE.Mesh(edgeGeo, edgeMat);
         edge.position.z = -0.05;
         scene.add(edge);
 
-        // Ojo izquierdo
         const eyeGeo = new THREE.CircleGeometry(0.12, 16);
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0a0a2a });
         const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
         eyeL.position.set(-0.28, 0.1, 0.12);
         scene.add(eyeL);
 
-        // Ojo derecho
         const eyeR = eyeL.clone();
         eyeR.position.set(0.28, 0.1, 0.12);
         scene.add(eyeR);
 
-        // Boca (línea simple)
         const mouthPoints = [
             new THREE.Vector3(-0.22, -0.18, 0.12),
             new THREE.Vector3(0, -0.28, 0.12),
@@ -67,14 +54,12 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
         const mouth = new THREE.Line(mouthGeo, mouthMat);
         scene.add(mouth);
 
-        // Luz
         const ambient = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambient);
         const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
         dirLight.position.set(2, 2, 5);
         scene.add(dirLight);
 
-        // Animación: giro suave cuando está quieto
         let animId: number;
         let t = 0;
         const animate = () => {
@@ -84,7 +69,6 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
                 body.rotation.z = Math.sin(t * 0.5) * 0.15;
                 edge.rotation.z = body.rotation.z;
             } else {
-                // Vibra un poco mientras arrastra
                 body.rotation.z = Math.sin(t * 4) * 0.08;
                 edge.rotation.z = body.rotation.z;
             }
@@ -98,7 +82,7 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
         };
     }, []);
 
-    // ---- AUDIO: melodía tipo GD con Web Audio API ----
+    // ---- AUDIO ----
     const startMusic = useCallback(() => {
         if (isDragging.current) return;
         isDragging.current = true;
@@ -106,7 +90,6 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
         const ctx = new AudioContext();
         audioCtx.current = ctx;
 
-        // Notas de una melodía simple en loop
         const notes = [523, 659, 784, 880, 784, 659, 523, 440];
         const noteDuration = 0.15;
 
@@ -122,10 +105,8 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * noteDuration + noteDuration * 0.9);
                 osc.start(ctx.currentTime + i * noteDuration);
                 osc.stop(ctx.currentTime + i * noteDuration + noteDuration);
-                oscillators.current.push(osc);
             });
 
-            // Repite el loop mientras siga arrastrando
             setTimeout(() => {
                 if (isDragging.current) playLoop();
             }, notes.length * noteDuration * 1000);
@@ -138,36 +119,10 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
         isDragging.current = false;
         audioCtx.current?.close();
         audioCtx.current = null;
-        oscillators.current = [];
     }, []);
-
-    // ---- COLISIONES ----
-    const checkCollisions = useCallback(() => {
-        if (!vipRef.current) return;
-        const vipRect: DOMRect = vipRef.current.getBoundingClientRect();
-
-        obstacleIds.forEach((id: string) => {
-            const obsEl: HTMLElement | null = document.getElementById(id);
-            if (!obsEl) return;
-            const obsRect: DOMRect = obsEl.getBoundingClientRect();
-
-            const choco: boolean =
-                vipRect.left < obsRect.right &&
-                vipRect.right > obsRect.left &&
-                vipRect.top < obsRect.bottom &&
-                vipRect.bottom > obsRect.top;
-
-            const ahora: number = Date.now();
-            if (choco && ahora - lastHit.current > COOLDOWN) {
-                lastHit.current = ahora;
-                onCollision?.();
-            }
-        });
-    }, [obstacleIds, onCollision]);
 
     return (
         <>
-            {/* Cursor personalizado (CSS global via style tag) */}
             <style>{`
         * { cursor: none !important; }
         .custom-cursor {
@@ -179,11 +134,9 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
           z-index: 9999;
           transform: translate(-50%, -50%) rotate(45deg);
           box-shadow: 0 0 10px #4fc3f7aa;
-          transition: transform 0.1s, background 0.1s;
         }
       `}</style>
 
-            {/* Cuadrado VIP con canvas Three.js dentro */}
             <div
                 ref={vipRef}
                 onMouseDown={startMusic}
@@ -194,7 +147,6 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
                     position: "absolute",
                     width: 80,
                     height: 80,
-                    cursor: "none",
                     touchAction: "none",
                     filter: "drop-shadow(0 0 12px #4fc3f7aa)",
                 }}
@@ -209,7 +161,6 @@ export default function VIPBox({ onCollision, obstacleIds }: VIPBoxProps) {
                     const el = target as HTMLElement;
                     el.style.left = `${left}px`;
                     el.style.top = `${top}px`;
-                    checkCollisions();
                 }}
             />
         </>
